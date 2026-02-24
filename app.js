@@ -72,8 +72,8 @@ const updateUIForRole = () => {
     navItems.forEach(item => {
         const target = item.getAttribute('data-target');
         if (currentUser.role === 'employee') {
-            // Employee only sees Sales, Purchases, Product DB, and Logout
-            if (target !== 'sales' && target !== 'purchases' && target !== 'products' && item.id !== 'btn-logout') {
+            // Employee sees Products, Sales, Purchases, and Logout
+            if (target !== 'products' && target !== 'sales' && target !== 'purchases' && item.id !== 'btn-logout') {
                 item.style.display = 'none';
             } else {
                 item.style.display = 'flex';
@@ -88,15 +88,9 @@ const updateUIForRole = () => {
     const activeNav = document.querySelector('.nav-item.active');
     if (currentUser.role === 'employee' && activeNav) {
         const target = activeNav.getAttribute('data-target');
-        if (target !== 'sales' && target !== 'purchases' && target !== 'products') {
+        if (target !== 'products' && target !== 'sales' && target !== 'purchases') {
             document.querySelector('.nav-item[data-target="sales"]').click();
         }
-    }
-
-    // Hide Add Product button for employees
-    const btnAddProduct = document.getElementById('btn-add-item-db');
-    if (btnAddProduct) {
-        btnAddProduct.style.display = currentUser.role === 'admin' ? 'flex' : 'none';
     }
 
     // Update User Profile
@@ -311,10 +305,6 @@ function renderTable(data = inventory) {
 
     const activeData = data.filter(item => item.showInInventory !== false);
 
-    // Toggle Actions Header
-    const actionHeader = document.querySelector('#inventory-list').closest('table').querySelector('th:nth-child(8)');
-    if (actionHeader) actionHeader.style.display = currentUser.role === 'admin' ? '' : 'none';
-
     if (activeData.length === 0) {
         inventoryList.innerHTML = `<tr><td colspan="8" style="text-align: center; color: var(--text-secondary); padding: 32px;">No active inventory items found.</td></tr>`;
         return;
@@ -336,7 +326,6 @@ function renderTable(data = inventory) {
             <td>${item.sold || 0}</td>
             <td style="font-weight: 500;">${formatCurrency(item.price)}</td>
             <td>${getStatusBadge(item.qty)}</td>
-            ${currentUser.role === 'admin' ? `
             <td>
                 <div class="action-btns">
                     <button class="action-btn" title="Edit Stock" onclick="editItem(${item.id}, 'inventory')">
@@ -349,7 +338,7 @@ function renderTable(data = inventory) {
                         </svg>
                     </button>
                 </div>
-            </td>` : ''}
+            </td>
         `;
         inventoryList.appendChild(tr);
     });
@@ -359,6 +348,14 @@ function renderProductDB(data = inventory) {
     if (!productDbList) return;
     productDbList.innerHTML = '';
     const searchTerm = globalSearch.value.toLowerCase();
+    const isAdmin = currentUser && currentUser.role === 'admin';
+
+    // Update table header visibility
+    const tableHeader = document.querySelector('#view-products table thead tr');
+    if (tableHeader) {
+        const actionsHeader = tableHeader.querySelector('th:last-child');
+        if (actionsHeader) actionsHeader.style.display = isAdmin ? 'table-cell' : 'none';
+    }
 
     let filteredData = data;
     if (searchTerm) {
@@ -368,12 +365,9 @@ function renderProductDB(data = inventory) {
         );
     }
 
-    // Toggle Actions Header
-    const actionHeader = document.querySelector('#product-db-list').closest('table').querySelector('th:nth-child(6)');
-    if (actionHeader) actionHeader.style.display = currentUser.role === 'admin' ? '' : 'none';
-
     if (filteredData.length === 0) {
-        productDbList.innerHTML = `<tr><td colspan="6" style="text-align: center; color: var(--text-secondary); padding: 32px;">No products in database. ${searchTerm ? '(Matches search)' : ''}</td></tr>`;
+        const colCount = isAdmin ? 6 : 5;
+        productDbList.innerHTML = `<tr><td colspan="${colCount}" style="text-align: center; color: var(--text-secondary); padding: 32px;">No products in database. ${searchTerm ? '(Matches search)' : ''}</td></tr>`;
         return;
     }
 
@@ -389,7 +383,7 @@ function renderProductDB(data = inventory) {
             </td>
             <td style="font-weight: 500;">${formatCurrency(item.cost || 0)}</td>
             <td style="font-weight: 500;">${formatCurrency(item.price)}</td>
-            ${currentUser.role === 'admin' ? `
+            ${isAdmin ? `
             <td>
                 <div class="action-btns">
                     ${item.showInInventory === false ? `
@@ -404,7 +398,8 @@ function renderProductDB(data = inventory) {
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
                     </button>
                 </div>
-            </td>` : ''}
+            </td>
+            ` : ''}
         `;
         productDbList.appendChild(tr);
     });
